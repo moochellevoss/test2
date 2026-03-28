@@ -1,0 +1,554 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>on the wall</title>
+<link href="https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400;0,500;1,400;1,500&family=Cormorant+Garamond:ital,wght@0,300;1,300;1,400&family=Space+Mono:ital@0;1&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --teal:#1D9E75; --tl:#9FE1CB;
+    --violet:#534AB7; --vl:#AFA9EC;
+    --coral:#F5C4B3;
+    --cream:#F1EFE8;
+    --bg:#0e0d0b;
+    --text:#e8e4d8; --dim:#888780; --faint:#3a3936;
+  }
+
+  * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+
+  html, body {
+    width:100%; height:100%;
+    overflow:hidden;
+    background:var(--bg);
+    color:var(--text);
+    font-family:'EB Garamond',Georgia,serif;
+    font-size:18px;
+    line-height:1.85;
+    -webkit-text-size-adjust:100%;
+  }
+
+  /* grain overlay */
+  body::before {
+    content:''; position:fixed; inset:0; z-index:999; pointer-events:none;
+    background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.035'/%3E%3C/svg%3E");
+    background-size:200px; opacity:.6;
+  }
+
+  /* orbs */
+  .orb { position:fixed; border-radius:50%; pointer-events:none; filter:blur(80px); }
+  .o1 { width:500px;height:500px;background:radial-gradient(circle,rgba(29,158,117,.11),transparent 70%);top:-140px;left:-140px;animation:b1 9s ease-in-out infinite; }
+  .o2 { width:420px;height:420px;background:radial-gradient(circle,rgba(83,74,183,.08),transparent 70%);bottom:-100px;right:-100px;animation:b2 12s ease-in-out infinite; }
+  .o3 { width:320px;height:320px;background:radial-gradient(circle,rgba(245,196,179,.06),transparent 70%);top:35%;left:25%;animation:b3 15s ease-in-out infinite; }
+  @keyframes b1{0%,100%{transform:scale(1);opacity:.7}50%{transform:scale(1.12);opacity:1}}
+  @keyframes b2{0%,100%{transform:scale(1.1);opacity:.5}50%{transform:scale(.9);opacity:.9}}
+  @keyframes b3{0%,100%{transform:scale(1);opacity:.3}60%{transform:scale(1.18);opacity:.6}}
+
+  /* progress bar */
+  #bar { position:fixed;top:0;left:0;right:0;height:2px;z-index:600; }
+  #bar-fill { height:100%;background:linear-gradient(to right,var(--teal),var(--vl));transition:width 1.2s ease;width:0%; }
+
+  /* route line */
+  #route-svg { position:fixed;right:-8px;top:0;bottom:0;width:80px;pointer-events:none;z-index:3;opacity:.22; }
+
+  /* floating glyphs */
+  .fg { position:fixed;pointer-events:none;z-index:2;opacity:0;transition:opacity 3s ease;
+    font-family:'Cormorant Garamond',serif;font-style:italic; }
+  #fg1{left:12px;top:20%;font-size:1.2rem;color:var(--tl)}
+  #fg2{left:8px;top:55%;font-size:.9rem;color:var(--coral);letter-spacing:.08em}
+  #fg3{left:10px;top:38%;font-size:.85rem;color:var(--vl)}
+
+  /* ── SCREENS ── */
+  /* Full-height, no scroll, flex column */
+  .screen {
+    display:none;
+    position:fixed; inset:0;
+    flex-direction:column;
+    overflow:hidden;
+    z-index:10;
+  }
+  .screen.active { display:flex; }
+
+  /* ── COVER ── */
+  #s-cover {
+    justify-content:center; align-items:flex-start;
+    padding: env(safe-area-inset-top, 40px) 2rem env(safe-area-inset-bottom, 30px) 2rem;
+    animation:rise 2s ease forwards;
+  }
+  .wm { font-family:'Space Mono',monospace;font-size:9px;letter-spacing:.28em;color:var(--teal);
+    text-transform:lowercase;margin-bottom:5vh;opacity:.7; }
+  h1.ct {
+    font-family:'Cormorant Garamond',serif;
+    font-size:clamp(2.4rem,11vw,4.2rem);
+    font-weight:300;font-style:italic;line-height:1.05;
+    color:var(--cream);margin-bottom:2rem;
+  }
+  h1.ct em { color:var(--tl);font-style:normal; }
+  h1.ct .dw { color:var(--dim);font-style:italic; }
+  .cover-sub { font-size:.9rem;color:var(--dim);max-width:320px;line-height:1.9;margin-bottom:3vh; }
+  .cover-langs { font-family:'Space Mono',monospace;font-size:8px;letter-spacing:.18em;
+    color:var(--faint);line-height:2.2;margin-bottom:3vh; }
+  .vline { width:1px;height:80px;background:linear-gradient(to bottom,transparent,var(--teal),transparent);
+    margin:2vh 0;opacity:.35; }
+
+  /* big tap button on cover */
+  #btn-begin {
+    margin-top:3vh;
+    display:inline-flex;align-items:center;gap:12px;
+    font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.22em;text-transform:lowercase;
+    color:var(--teal);border:1px solid rgba(29,158,117,.3);
+    padding:16px 36px;background:transparent;cursor:pointer;transition:all .3s;
+    -webkit-appearance:none; border-radius:0;
+  }
+  #btn-begin:active { background:rgba(29,158,117,.1); }
+  .arrow-r { width:14px;height:1px;background:currentColor;display:inline-block;position:relative;flex-shrink:0; }
+  .arrow-r::after { content:'';position:absolute;right:0;top:-3px;width:5px;height:5px;
+    border-right:1px solid;border-top:1px solid;transform:rotate(45deg);display:block; }
+
+  /* ── SESSION ── */
+  #s-session {
+    padding: env(safe-area-inset-top, 20px) 0 0 0;
+    justify-content:flex-start;
+  }
+
+  .s-top {
+    display:flex;align-items:center;justify-content:space-between;
+    padding:0 1.8rem;
+    margin-bottom:0;
+    flex-shrink:0;
+    padding-top:12px; padding-bottom:12px;
+    opacity:0;animation:rise 1.5s .3s ease forwards;
+  }
+  .plbl { font-family:'Space Mono',monospace;font-size:8px;letter-spacing:.25em;
+    text-transform:lowercase;color:var(--teal);opacity:.65; }
+  .pt { width:100px;height:1px;background:var(--faint); }
+  .pf { height:1px;background:var(--teal);transition:width 1.4s ease;width:0%; }
+
+  /* the scrollable content area — ONLY this part scrolls if needed */
+  #slide-wrap {
+    flex:1;
+    overflow:hidden;
+    position:relative;
+    padding:0 1.8rem;
+    display:flex;
+    flex-direction:column;
+  }
+
+  /* hint */
+  .hint { font-family:'Space Mono',monospace;font-size:8px;letter-spacing:.14em;
+    color:var(--faint);opacity:.35;margin-bottom:1.5vh;flex-shrink:0; }
+
+  /* block — fills available space */
+  .block {
+    flex:1;
+    display:flex;
+    flex-direction:column;
+    justify-content:space-between;
+    opacity:0;transform:translateY(12px);
+    transition:opacity 1.8s ease,transform 1.8s ease;
+    min-height:0;
+  }
+  .block.in { opacity:1;transform:translateY(0); }
+
+  .block-inner {
+    flex:1;
+    overflow:hidden;
+    display:flex;
+    flex-direction:column;
+    justify-content:center;
+    min-height:0;
+    padding-bottom:.5rem;
+  }
+
+  .slbl { font-family:'Space Mono',monospace;font-size:8px;letter-spacing:.25em;
+    text-transform:lowercase;color:var(--faint);margin-bottom:1.2rem;flex-shrink:0; }
+
+  /* keyword */
+  .kw { display:flex;flex-direction:column;margin-bottom:1.4rem;
+    border-left:1px solid rgba(29,158,117,.2);padding-left:1rem;flex-shrink:0; }
+  .kw-w { font-family:'Cormorant Garamond',serif;font-size:clamp(1.8rem,7vw,2.4rem);
+    font-weight:300;font-style:italic;line-height:1.05;margin-bottom:.2rem; }
+  .kw-w.tl{color:var(--tl)}.kw-w.vl{color:var(--vl)}.kw-w.co{color:var(--coral)}
+  .kw-m { font-family:'Space Mono',monospace;font-size:8px;letter-spacing:.15em;
+    color:var(--faint);text-transform:lowercase;line-height:1.7; }
+
+  /* verse — this is the main text, scales to fit */
+  .verse {
+    font-size:clamp(.95rem,3.8vw,1.1rem);
+    line-height:1.95;
+    color:var(--text);
+    flex:1;
+    overflow:hidden;
+    min-height:0;
+  }
+  .verse em{color:var(--tl);font-style:italic}
+  .verse strong{color:var(--cream);font-weight:500}
+  .verse .sg{color:var(--teal);letter-spacing:.05em}
+  .verse .fr{color:var(--coral);font-style:italic}
+  .verse .ct{color:var(--tl);letter-spacing:.1em}
+  .verse .ph{color:var(--vl);font-style:italic}
+  .verse .dm{opacity:.35;font-style:italic;font-size:.85em}
+  .verse .dots{opacity:.22;letter-spacing:.3em;display:block;margin:1rem 0;font-size:.8em}
+
+  /* breath dots */
+  .br-row { display:flex;align-items:center;gap:12px;margin:.8rem 0;opacity:.3;flex-shrink:0; }
+  .bd { width:4px;height:4px;border-radius:50%;background:var(--tl);animation:pulse 4.5s ease-in-out infinite; }
+  .bd:nth-child(2){animation-delay:1.5s}.bd:nth-child(3){animation-delay:3s}
+  @keyframes pulse{0%,100%{opacity:.2;transform:scale(1)}50%{opacity:1;transform:scale(1.6)}}
+
+  /* echo */
+  .echo { display:flex;flex-wrap:wrap;gap:.8rem;margin:.6rem 0;align-items:baseline;opacity:.38;flex-shrink:0; }
+  .ew { font-family:'Cormorant Garamond',serif;font-size:1.2rem;font-weight:300;font-style:italic; }
+  .ew.tl{color:var(--tl)}.ew.vl{color:var(--vl)}.ew.co{color:var(--coral)}
+
+  /* continue — fixed at bottom */
+  .cont-wrap {
+    flex-shrink:0;
+    padding:0 1.8rem env(safe-area-inset-bottom, 20px) 1.8rem;
+    padding-bottom:max(env(safe-area-inset-bottom, 16px), 16px);
+  }
+  #cont-btn {
+    display:flex;align-items:center;gap:12px;
+    font-family:'Space Mono',monospace;font-size:9px;letter-spacing:.18em;text-transform:lowercase;
+    color:var(--faint);background:none;border:none;cursor:pointer;
+    padding:14px 0;width:100%;
+    transition:color .25s;
+    -webkit-appearance:none;
+    opacity:0;animation:rise 1s 1.2s ease forwards;
+  }
+  #cont-btn:active { color:var(--tl); }
+  #cont-btn .arr { width:16px;height:1px;background:currentColor;position:relative;flex-shrink:0; }
+  #cont-btn .arr::after { content:'';position:absolute;right:0;top:-3px;width:5px;height:5px;
+    border-right:1px solid;border-top:1px solid;transform:rotate(45deg); }
+  #cont-btn span { flex:1; }
+
+  /* tap zone — invisible overlay for tap-anywhere */
+  #tap-zone {
+    position:fixed;inset:0;z-index:50;
+    cursor:pointer;
+    -webkit-tap-highlight-color:transparent;
+  }
+  /* but buttons need to be above tap-zone */
+  #s-cover, #s-close { z-index:60; }
+  .cont-wrap { position:relative;z-index:60; }
+  .s-top { position:relative;z-index:60; }
+
+  /* ── CLOSE ── */
+  #s-close {
+    justify-content:center;align-items:flex-start;
+    padding: env(safe-area-inset-top,40px) 2rem env(safe-area-inset-bottom,30px) 2rem;
+    animation:rise 2.2s ease forwards;
+    z-index:60;
+  }
+  .cg { font-family:'Space Mono',monospace;font-size:9px;letter-spacing:.25em;color:var(--teal);margin-bottom:3vh; }
+  h2.ct2 { font-family:'Cormorant Garamond',serif;font-weight:300;
+    font-size:clamp(1.9rem,9vw,3rem);font-style:italic;color:var(--cream);line-height:1.12;margin-bottom:2rem; }
+  .cline { width:40px;height:1px;background:linear-gradient(to right,var(--teal),transparent);margin:1.5vh 0; }
+  .csub { color:var(--dim);font-size:.9rem;max-width:300px;line-height:1.85;margin-bottom:2vh; }
+  .close-echo { display:flex;flex-wrap:wrap;gap:1rem;margin-bottom:3vh;opacity:.45;align-items:baseline; }
+  .close-ew { font-family:'Cormorant Garamond',serif;font-size:1.3rem;font-weight:300;font-style:italic; }
+
+  #btn-again {
+    display:inline-flex;align-items:center;gap:12px;
+    font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.2em;text-transform:lowercase;
+    color:var(--teal);border:1px solid rgba(29,158,117,.28);
+    padding:14px 30px;background:transparent;cursor:pointer;
+    -webkit-appearance:none;border-radius:0;transition:all .3s;
+  }
+  #btn-again:active { background:rgba(29,158,117,.1); }
+
+  @keyframes rise{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+</style>
+</head>
+<body>
+
+<div class="orb o1"></div>
+<div class="orb o2"></div>
+<div class="orb o3"></div>
+<div id="bar"><div id="bar-fill"></div></div>
+
+<div class="fg" id="fg1">送</div>
+<div class="fg" id="fg2">souple</div>
+<div class="fg" id="fg3">放心</div>
+
+<svg id="route-svg" viewBox="0 0 80 900" xmlns="http://www.w3.org/2000/svg">
+  <path d="M40 870 C36 740,52 630,38 520 C26 410,48 320,40 230 C32 150,46 90,40 30"
+        stroke="#1D9E75" stroke-width="1" fill="none" stroke-dasharray="5 4" stroke-linecap="round"/>
+  <circle cx="40" cy="870" r="4" fill="#1D9E75" fill-opacity="0.45" id="dot"/>
+</svg>
+
+<!-- COVER -->
+<div class="screen active" id="s-cover">
+  <div class="wm">projection · sur la voie</div>
+  <h1 class="ct">on<br>the <em>wall</em><br><span class="dw">encore là</span></h1>
+  <p class="cover-sub">Between attempts. Read slowly. Let each line land before the next arrives.</p>
+  <div class="cover-langs">
+    送 · sóng · cantonese<br>
+    souple · encore · allons · french<br>
+    <span style="opacity:.35">the three languages that live in you</span>
+  </div>
+  <div class="vline"></div>
+  <button id="btn-begin"><span>begin</span><span class="arrow-r"></span></button>
+</div>
+
+<!-- SESSION -->
+<div class="screen" id="s-session">
+  <!-- tap zone — whole screen advances -->
+  <div id="tap-zone"></div>
+
+  <div class="s-top">
+    <span class="plbl" id="pLbl">arriving back</span>
+    <div class="pt"><div class="pf" id="pFill"></div></div>
+  </div>
+
+  <div id="slide-wrap">
+    <div class="hint">tap anywhere · breathe · continue</div>
+    <div id="bContent" style="flex:1;display:flex;flex-direction:column;min-height:0;"></div>
+  </div>
+
+  <div class="cont-wrap">
+    <button id="cont-btn">
+      <span id="cont-lbl">continue</span>
+      <span class="arr"></span>
+    </button>
+  </div>
+</div>
+
+<!-- CLOSE -->
+<div class="screen" id="s-close">
+  <div class="cg">送 · sóng · on y est · 我們在這裡</div>
+  <h2 class="ct2">Ouvre les yeux.<br>Chalk up.<br><em>Allons-y.</em></h2>
+  <div class="cline"></div>
+  <p class="csub">Michelle est là. La carte est à jour. La voie t'attend — <span style="font-style:italic;color:var(--coral)">comme toujours.</span></p>
+  <div class="close-echo">
+    <span class="close-ew" style="color:var(--tl)">送</span>
+    <span class="close-ew" style="color:var(--coral)">souple</span>
+    <span class="close-ew" style="color:var(--vl)">encore</span>
+    <span class="close-ew" style="color:var(--tl)">放心</span>
+    <span class="close-ew" style="color:var(--coral)">allons</span>
+  </div>
+  <button id="btn-again"><span>read again</span><span class="arrow-r"></span></button>
+</div>
+
+<script>
+// ── DATA ─────────────────────────────────────────────────────────────────
+var BLOCKS = [
+  {
+    phase: 'arriving back',
+    kw: { w: 'encore là', cls: 'co', m: 'french · still here · again here · once more, present' },
+    text: 'I am still here.\n\nThe wall is still here.\nThe route is still here.\nAnd so am I —\n<em>encore là,</em>\nwhich means something.\n\nThe breath comes.\nThe breath goes.\nAnd between the two —\nthere is a place\nthat has not been tired out.\n\n<em>That place is available right now.\nRight now, it is full.</em>'
+  },
+  {
+    phase: 'energy · 送',
+    kw: { w: '送', cls: 'tl', m: 'sóng · cantonese · to send · to accompany · to offer' },
+    text: 'It is not important if the forearms are pumped.\nBecause what matters is this:\n\n<em>pump is not empty.</em>\nPump is the body mid-conversation with the wall.\nPump is the body saying:\n<em>I am engaged. I am in this. I am here.</em>\n\n<span class="dots">· · ·</span><span class="sg">送 — sóng.</span>\nThe blood is not leaving —\nit is <em>arriving.</em>\nInto the tissue, into the fibers,\ninto exactly where it is needed.\n\nI am not running out.\nI am <em>running in.</em>',
+    echo: ['送','sóng','在']
+  },
+  {
+    phase: 'souple',
+    kw: { w: 'souple', cls: 'co', m: 'french · supple · soul · pull · the body saying yes' },
+    text: 'There is a word that lives in French\nand also in the body —\n<span class="fr">souple.</span>\n\n<span class="fr">Sou — ple.</span>\nLike <em>soul.</em>\nLike <em>pull.</em>\nLike the hands finding a hold\nbefore the mind gives the order.\n\nRight now, my body is <span class="fr">souple.</span>\nThe fingers are souple.\nThe hips are souple.\nThe mind — <span class="fr">souple.</span>\n\nSupple enough to hold the beta.\nSupple enough to release what no longer serves it.\n<em>Supple enough to be surprised.</em>',
+    breath: true
+  },
+  {
+    phase: 'le beta · déjà su',
+    kw: { w: 'déjà su', cls: 'vl', m: 'french · already known · already in the body' },
+    text: 'The beta is not in the head.\nThe beta is in the <em>body that has tried it.</em>\n\nEvery attempt left a trace —\nin the shoulders, in the feet,\nin the tissue below the thinking mind.\n\nRight now I am not trying to <em>remember</em> the beta.\nI am <em>listening</em> to where it lives.\n\nIt lives in the hip, slightly open.\nIt lives in the way the foot knows\nbefore the hand does.\n\n<em>I trust the sequence.\nThe sequence is mine.\nThe sequence is already in me.</em>',
+    echo: ['déjà su','already known','知']
+  },
+  {
+    phase: 'Michelle',
+    kw: { w: 'Michelle', cls: 'vl', m: 'mi · chèle · my shell · celle qui protège' },
+    text: 'Michelle.\n\n<span class="ph">Mi — chèle.\nMi — the self.\nChèle — celle qui protège.\nThe one who protects.</span>\n\nI know you can feel it —\nthe pump, the uncertainty,\nthe distance still above.\n\nYou are measuring.\nYou are calculating.\nYou are doing exactly what you were made to do.\n\n<em>Et je t\'en suis reconnaissante.\nAnd I am grateful.</em>\n\nBut Michelle —\nfeel the feet on the wall.\nFeel how real that is.\nThis is not the past.\n<em>This is now.</em>',
+    breath: true
+  },
+  {
+    phase: 'pour Michelle · 放心',
+    kw: { w: '放心', cls: 'tl', m: 'fong sam · cantonese · release the heart · be at ease' },
+    text: 'Michelle —\n<span class="ct">放心.</span>\n<em>Fong sam.</em>\n\nThe sounds your family made\nwhen something was going to be okay.\n\n<span class="ct">放 — fong</span> — to release.\nLike <em>fond</em> — the fondness\nthat lives underneath the fear.\n\n<span class="ct">心 — sam</span> — the heart.\nLike the quiet that plays\nwhen the mind stops talking.\n\nMichelle, <span class="ct">放心.</span>\nYou are not being asked to let go of the map.\nYou are being asked to add one line to it:\n\n<em>ici — c\'est possible maintenant.\nHere — we are ready.</em>',
+    echo: ['放心','fong sam','fond']
+  },
+  {
+    phase: '送 · ensemble',
+    kw: { w: '送 · ensemble', cls: 'tl', m: 'cantonese · french · sending forward · together' },
+    text: '<span class="sg">送</span> — sóng — <span class="fr">ensemble.</span>\n\nTogether we send.\n\nNot Michelle staying behind at the bottom\nwhile I climb.\nNot me going alone.\n\n<em>Ensemble.</em>\nShe holds the map.\nI hold the chalk.\nWe share the send.\n\n<span class="dots">· · ·</span><span class="fr">On se donne à la voie.</span>\nWe give ourselves to the route —\nnot recklessly —\n<em>généreusement.</em>\nThe way you give something\nwhen you know you have enough.',
+    breath: true,
+    echo: ['送','ensemble','一起']
+  },
+  {
+    phase: 'la force · déjà là',
+    kw: { w: 'déjà là', cls: 'co', m: 'french · already there · strength that arrived before you noticed' },
+    text: 'Somewhere —\nmaybe in the shoulders,\nmaybe low in the belly —\n\nsomething is gathering.\n\nNot forced. Not performed.\nJust <em>noticed.</em>\n\nLike the moment before <span class="sg">送</span> —\nwhen the thing is already moving\nbut hasn\'t yet left the hand.\n\nI am strong.\nNot because I decided to be —\nbut because I have been building this\nfor a long time.\n\nThe stone remembers me.\nMy tendons remember the holds.\n<span class="fr">La force est déjà là.</span>\n<em>The strength is already there.</em>'
+  },
+  {
+    phase: 'allumée',
+    kw: { w: 'allumée', cls: 'tl', m: 'french · lit up · switched on · the body as a lamp' },
+    text: 'Now — something specific.\n\nThat feeling.\n<em>You know the one.</em>\n\nWhen the warmup has done its work\nand the fingers close around a hold\nand the whole system fires <em>clean.</em>\n\nThat crispness.\nThat electric readiness.\nThe feeling that the rock is <em>answering</em> the hands.\n\n<span class="fr">Allumée.</span>\nLit up. Switched on.\nThe body as a lamp\nthat knows how to come on.\n\n<span class="sg">送.</span>\nNot sending effort out —\n<em>receiving power in.</em>\n<span class="fr">Souple et allumée.</span>\n<strong>Awake, and glad to be awake.</strong>',
+    echo: ['allumée','送','souple']
+  },
+  {
+    phase: 'la voie',
+    kw: { w: 'la voie', cls: 'vl', m: 'french · the route · the way · the path that is the destination' },
+    text: 'Now — the wall.\n\nI can see it.\nThe color of the rock.\nThe light at the crux.\n\nI am at the bottom.\nChalk on the hands.\nSomething in me: <em>calm.</em>\n\n<span class="fr">Le calme de celle qui a préparé.</span>\nMichelle beside me, holding the updated map,\n<em>nodding.</em>\n\nI begin to move.\n\nThe feet find their positions.\nThe hands read the holds\n<em>before the words arrive.</em>\n\nAt the crux — I <em>arrive</em> at it.\nI move through it the way water moves\nthrough a narrow place —\nnot by pushing,\nbut by being exactly the right shape.\n\n<span class="sg" style="font-size:1.3em;letter-spacing:.12em">送.</span>\n\n<em>Confirmed.</em> Like a key in a door\nthat was always mine.',
+    breath: true
+  },
+  {
+    phase: 'retour · on y est',
+    kw: { w: 'on y est', cls: 'co', m: 'french · we are there · we are here · it is the same place' },
+    text: 'And now, slowly —\nthe breath comes back like tide.\n\nThe fingers remember they are fingers.\nThe feet — the floor.\n\nI carry this:\n\nthe rest,\nthe strength,\n<span class="fr">la souplesse,</span>\nthe calm,\nthe send <em>already inside me.</em>\n\nMichelle is here.\nShe has the updated map.\n\n<span class="fr">On y est.</span>\n<span class="ct">我們在這裡.</span>\n\nWe are there. We are here.\n<em>It is the same place.</em>\n\n<span class="dm">送 · souple · allumée · ensemble · on y est · 放心 · 我們在這裡</span>',
+    final: true,
+    echo: ['送','on y est','放心']
+  }
+];
+
+// ── STATE ─────────────────────────────────────────────────────────────────
+var cur = 0;
+var advancing = false;
+
+// ── INIT ──────────────────────────────────────────────────────────────────
+document.getElementById('btn-begin').addEventListener('click', begin);
+document.getElementById('btn-again').addEventListener('click', restart);
+document.getElementById('cont-btn').addEventListener('click', function(e){
+  e.stopPropagation();
+  advance();
+});
+document.getElementById('tap-zone').addEventListener('click', function(){ advance(); });
+
+// spacebar on desktop
+document.addEventListener('keydown', function(e){
+  if(e.code !== 'Space') return;
+  if(!document.getElementById('s-session').classList.contains('active')) return;
+  e.preventDefault();
+  advance();
+});
+
+function begin(){
+  showScreen('s-session');
+  cur = 0;
+  renderBlock(0);
+  animateDot();
+  pulseGlyphs();
+}
+
+function showScreen(id){
+  var screens = document.querySelectorAll('.screen');
+  for(var i=0;i<screens.length;i++) screens[i].classList.remove('active');
+  document.getElementById(id).classList.add('active');
+}
+
+function advance(){
+  if(advancing) return;
+  advancing = true;
+  cur++;
+  if(cur >= BLOCKS.length){
+    finish();
+  } else {
+    renderBlock(cur);
+  }
+  setTimeout(function(){ advancing = false; }, 400);
+}
+
+function renderBlock(i){
+  var b = BLOCKS[i];
+  var pct = Math.round((i / BLOCKS.length) * 100);
+
+  document.getElementById('pLbl').textContent = b.phase;
+  document.getElementById('pFill').style.width = pct + '%';
+  document.getElementById('bar-fill').style.width = pct + '%';
+
+  // update continue button label
+  var lbl = b.final ? 'ouvre les yeux' : 'continue';
+  document.getElementById('cont-lbl').textContent = lbl;
+  // reset animation
+  var cb = document.getElementById('cont-btn');
+  cb.style.animation = 'none';
+  cb.style.opacity = '0';
+  setTimeout(function(){ cb.style.animation = ''; cb.style.opacity = ''; }, 20);
+
+  // build block html
+  var html = '<div class="slbl">' + b.phase + '</div>';
+
+  if(b.kw){
+    html += '<div class="kw"><div class="kw-w ' + b.kw.cls + '">' + b.kw.w + '</div>'
+          + '<div class="kw-m">' + b.kw.m + '</div></div>';
+  }
+
+  html += '<div class="verse">' + b.text.replace(/\n/g,'<br>') + '</div>';
+
+  if(b.breath){
+    html += '<div class="br-row"><div class="bd"></div><div class="bd"></div><div class="bd"></div></div>';
+  }
+
+  if(b.echo){
+    var colors = ['tl','co','vl'];
+    var echHtml = '<div class="echo">';
+    for(var j=0;j<b.echo.length;j++){
+      echHtml += '<span class="ew ' + colors[j%3] + '">' + b.echo[j] + '</span>';
+    }
+    echHtml += '</div>';
+    html += echHtml;
+  }
+
+  var container = document.getElementById('bContent');
+  var div = document.createElement('div');
+  div.className = 'block';
+  div.innerHTML = html;
+  container.innerHTML = '';
+  container.appendChild(div);
+
+  requestAnimationFrame(function(){
+    setTimeout(function(){ div.classList.add('in'); }, 60);
+  });
+
+  moveDot(i / BLOCKS.length);
+}
+
+function finish(){
+  document.getElementById('bar-fill').style.width = '100%';
+  showScreen('s-close');
+}
+
+function restart(){
+  cur = 0;
+  document.getElementById('bar-fill').style.width = '0%';
+  showScreen('s-cover');
+}
+
+// ── CLIMBER DOT ───────────────────────────────────────────────────────────
+function moveDot(p){
+  var d = document.getElementById('dot');
+  if(!d) return;
+  d.setAttribute('cy', (870 - p*840).toFixed(0));
+  d.setAttribute('fill-opacity', Math.min(0.9, 0.35 + p*0.6).toFixed(2));
+}
+
+function animateDot(){
+  var d = document.getElementById('dot');
+  if(!d) return;
+  var big = false;
+  setInterval(function(){
+    big = !big;
+    d.setAttribute('r', big ? '5' : '3.5');
+  }, 2200);
+}
+
+// ── GLYPHS ────────────────────────────────────────────────────────────────
+function pulseGlyphs(){
+  var ids = ['fg1','fg2','fg3'];
+  ids.forEach(function(id, i){
+    var el = document.getElementById(id);
+    if(!el) return;
+    setTimeout(function(){
+      el.style.opacity = '.18';
+      setInterval(function(){
+        var o = parseFloat(el.style.opacity)||0;
+        el.style.opacity = o < 0.12 ? '0.18' : '0.04';
+      }, 7000 + i*1800);
+    }, i*1200);
+  });
+}
+</script>
+</body>
+</html>
